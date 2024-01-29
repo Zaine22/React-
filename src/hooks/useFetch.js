@@ -1,17 +1,41 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-function useFetch(url) {
+function useFetch(url, _options) {
   let [data, setData] = useState(null);
+  let [loading, setLoading] = useState(false);
+  let [error, setError] = useState(null);
+
+  let options = useRef(_options).current;
 
   useEffect(() => {
-    fetch(url)
-      .then((res) => res.json())
+    console.log(options);
+    let abortController = new AbortController();
+    let signal = abortController.signal;
+
+    setLoading(true);
+    fetch(url, { signal })
+      .then((res) => {
+        if (!res.ok) {
+          throw Error("something went wrong");
+        }
+        return res.json();
+      })
       .then((data) => {
         setData(data);
-      });
-  }, [url]);
+        setLoading(false);
+        setError(null);
+      })
 
-  return { data };
+      .catch((e) => {
+        setError(e.message);
+      });
+    //cleanup function
+    return () => {
+      abortController.abort();
+    };
+  }, [url, options]);
+
+  return { data, loading, error };
 }
 
 export default useFetch;
